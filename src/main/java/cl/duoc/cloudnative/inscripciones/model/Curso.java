@@ -17,16 +17,16 @@ public class Curso {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "nombre", nullable = false, length = 120)
     private String nombre;
 
-    @Column(nullable = false)
+    @Column(name = "instructor", nullable = false, length = 120)
     private String instructor;
 
-    @Column(nullable = false)
+    @Column(name = "duracion_horas", nullable = false)
     private Integer duracionHoras;
 
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(name = "costo", nullable = false, precision = 12, scale = 2)
     private BigDecimal costo;
 
     protected Curso() {
