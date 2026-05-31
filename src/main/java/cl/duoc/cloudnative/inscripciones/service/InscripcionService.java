@@ -17,10 +17,15 @@ public class InscripcionService {
 
     private final CursoRepository cursoRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final ResumenInscripcionService resumenInscripcionService;
 
-    public InscripcionService(CursoRepository cursoRepository, InscripcionRepository inscripcionRepository) {
+    public InscripcionService(
+            CursoRepository cursoRepository,
+            InscripcionRepository inscripcionRepository,
+            ResumenInscripcionService resumenInscripcionService) {
         this.cursoRepository = cursoRepository;
         this.inscripcionRepository = inscripcionRepository;
+        this.resumenInscripcionService = resumenInscripcionService;
     }
 
     @Transactional
@@ -48,7 +53,10 @@ public class InscripcionService {
                 total
         );
 
-        return InscripcionResponse.from(inscripcionRepository.save(inscripcion));
+        Inscripcion inscripcionGuardada = inscripcionRepository.save(inscripcion);
+        String resumenLocalPath = resumenInscripcionService.guardarResumenLocal(inscripcionGuardada);
+
+        return InscripcionResponse.from(inscripcionGuardada, resumenLocalPath);
     }
 
     public List<InscripcionResponse> listarInscripciones() {

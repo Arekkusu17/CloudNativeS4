@@ -81,12 +81,20 @@ jobs:
             docker rm $APP_NAME || true
 
             mkdir -p ~/curso-inscripciones-data
+            mkdir -p ~/curso-inscripciones-resumenes
 
             docker run -d \
               --name $APP_NAME \
               --restart unless-stopped \
               -p 8080:8080 \
+              -e AWS_REGION=us-east-1 \
+              -e AWS_S3_RESUMENES_BUCKET="${{ secrets.AWS_S3_RESUMENES_BUCKET }}" \
+              -e RESUMENES_LOCAL_DIR=/app/resumenes \
+              -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+              -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+              -e AWS_SESSION_TOKEN="${{ secrets.AWS_SESSION_TOKEN }}" \
               -v ~/curso-inscripciones-data:/app/data \
+              -v ~/curso-inscripciones-resumenes:/app/resumenes \
               $IMAGE_NAME:latest
 
             docker image prune -f

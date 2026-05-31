@@ -16,6 +16,21 @@ La consola H2 queda disponible en `http://localhost:8080/h2-console`.
 - User: `sa`
 - Password: dejar vacio
 
+Para usar la integracion con AWS S3, configurar estas variables de entorno antes de iniciar:
+
+```bash
+export AWS_REGION=us-east-1
+export AWS_S3_RESUMENES_BUCKET=nombre-del-bucket
+```
+
+Las credenciales AWS se resuelven con el proveedor por defecto del SDK de AWS: variables de entorno, perfil local, rol de EC2 u otro mecanismo soportado por AWS.
+
+Los resumenes fisicos generados al crear una inscripcion se guardan por defecto en `./resumenes`. La ruta se puede cambiar con:
+
+```bash
+export RESUMENES_LOCAL_DIR=./resumenes
+```
+
 ## Base de datos
 
 El esquema de base de datos se construye desde `src/main/resources/schema.sql` y los datos iniciales desde `src/main/resources/data.sql`. La aplicacion no depende de `ddl-auto=update`, por lo que las tablas y relaciones quedan declaradas de forma explicita y reproducible.
@@ -84,12 +99,97 @@ Content-Type: application/json
 }
 ```
 
-La respuesta incluye cursos seleccionados, costo por curso y total a pagar.
+La respuesta incluye cursos seleccionados, costo por curso, total a pagar y la ruta local del archivo fisico generado. El resumen queda guardado en:
+
+```text
+resumenes/inscripciones/id=1/resumen-inscripcion.txt
+```
 
 ### Listar inscripciones
 
 ```http
 GET /api/inscripciones
+```
+
+### Descargar resumen de inscripcion
+
+Descarga el archivo fisico `.txt` generado al crear la inscripcion. Si el archivo local no existe, se vuelve a generar desde la informacion de la inscripcion.
+
+```http
+GET /api/inscripciones/1/resumen
+```
+
+### Subir resumen generado a AWS S3
+
+Genera el resumen y lo sube al bucket configurado. El archivo se guarda dentro de una carpeta cuyo nombre corresponde al numero de inscripcion.
+
+Ruta S3 resultante:
+
+```text
+nombre-del-bucket/inscripciones/id=1/resumen-inscripcion.txt
+```
+
+```http
+POST /api/inscripciones/1/resumen/s3
+```
+
+### Modificar resumen en AWS S3
+
+Permite reemplazar el archivo del resumen cuando se necesita corregirlo.
+
+```http
+PUT /api/inscripciones/1/resumen/s3
+Content-Type: multipart/form-data
+
+file=@resumen-corregido.txt
+```
+
+### Descargar resumen desde AWS S3
+
+```http
+GET /api/inscripciones/1/resumen/s3
+```
+
+### Borrar resumen en AWS S3
+
+```http
+DELETE /api/inscripciones/1/resumen/s3
+```
+
+## Despliegue con GitHub Actions
+
+El workflow `.github/workflows/main.yml` compila el proyecto, ejecuta pruebas, publica la imagen en Docker Hub y despliega el contenedor en EC2 por SSH.
+
+Secrets requeridos en GitHub:
+
+| Secret | Uso |
+| --- | --- |
+| `DOCKERHUB_USERNAME` | Usuario de Docker Hub para construir el nombre de la imagen y autenticarse. |
+| `DOCKERHUB_TOKEN` | Token de Docker Hub para login, push y pull. |
+| `EC2_HOST` | Host publico o IP publica de la instancia EC2. |
+| `EC2_SSH_KEY` | Llave privada SSH para conectarse a EC2. |
+| `USER_SERVER` | Usuario SSH de la instancia EC2. |
+| `AWS_ACCESS_KEY_ID` | Access key usada por el contenedor para operar con S3. |
+| `AWS_SECRET_ACCESS_KEY` | Secret key usada por el contenedor para operar con S3. |
+| `AWS_SESSION_TOKEN` | Token temporal de AWS Academy/Lab, si corresponde. |
+| `AWS_S3_RESUMENES_BUCKET` | Bucket donde se guardan los resumenes de inscripcion. |
+
+Durante el despliegue, el contenedor recibe estas variables:
+
+```bash
+AWS_REGION=us-east-1
+AWS_S3_RESUMENES_BUCKET=${AWS_S3_RESUMENES_BUCKET}
+RESUMENES_LOCAL_DIR=/app/resumenes
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+```
+
+Tambien se montan volumenes persistentes en EC2:
+
+```text
+~/curso-inscripciones-data:/app/data
+~/curso-inscripciones-resumenes:/app/resumenes
 ```
 
 ## Docker

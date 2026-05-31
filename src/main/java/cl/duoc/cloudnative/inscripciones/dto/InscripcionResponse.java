@@ -12,16 +12,22 @@ public record InscripcionResponse(
         String estudianteEmail,
         List<CursoResponse> cursos,
         BigDecimal total,
-        LocalDateTime fechaInscripcion
+        LocalDateTime fechaInscripcion,
+        String resumenLocalPath
 ) {
     public static InscripcionResponse from(Inscripcion inscripcion) {
+        return from(inscripcion, null);
+    }
+
+    public static InscripcionResponse from(Inscripcion inscripcion, String resumenLocalPath) {
         return new InscripcionResponse(
                 inscripcion.getId(),
                 inscripcion.getEstudianteNombre(),
                 inscripcion.getEstudianteEmail(),
                 inscripcion.getCursos().stream().map(CursoResponse::from).toList(),
                 inscripcion.getTotal(),
-                inscripcion.getFechaInscripcion()
+                inscripcion.getFechaInscripcion(),
+                resumenLocalPath
         );
     }
 }
