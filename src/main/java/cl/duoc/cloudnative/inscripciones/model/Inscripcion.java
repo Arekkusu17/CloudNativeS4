@@ -12,6 +12,9 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,6 +23,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "inscripciones")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Inscripcion {
 
     @Id
@@ -50,9 +55,6 @@ public class Inscripcion {
     @Column(name = "fecha_inscripcion", nullable = false)
     private LocalDateTime fechaInscripcion;
 
-    protected Inscripcion() {
-    }
-
     public Inscripcion(String estudianteNombre, String estudianteEmail, List<Curso> cursos, BigDecimal total) {
         this.estudianteNombre = estudianteNombre;
         this.estudianteEmail = estudianteEmail;
@@ -66,29 +68,5 @@ public class Inscripcion {
         if (fechaInscripcion == null) {
             fechaInscripcion = LocalDateTime.now();
         }
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getEstudianteNombre() {
-        return estudianteNombre;
-    }
-
-    public String getEstudianteEmail() {
-        return estudianteEmail;
-    }
-
-    public List<Curso> getCursos() {
-        return cursos;
-    }
-
-    public BigDecimal getTotal() {
-        return total;
-    }
-
-    public LocalDateTime getFechaInscripcion() {
-        return fechaInscripcion;
     }
 }

@@ -10,11 +10,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "resumenes_inscripcion")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ResumenInscripcion {
 
     @Id
@@ -43,9 +48,6 @@ public class ResumenInscripcion {
     @Column(name = "fecha_subida_s3")
     private LocalDateTime fechaSubidaS3;
 
-    protected ResumenInscripcion() {
-    }
-
     public ResumenInscripcion(Inscripcion inscripcion, String nombreArchivo) {
         this.inscripcion = inscripcion;
         this.nombreArchivo = nombreArchivo;
@@ -56,38 +58,6 @@ public class ResumenInscripcion {
         if (fechaCreacion == null) {
             fechaCreacion = LocalDateTime.now();
         }
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Inscripcion getInscripcion() {
-        return inscripcion;
-    }
-
-    public String getNombreArchivo() {
-        return nombreArchivo;
-    }
-
-    public String getRutaLocal() {
-        return rutaLocal;
-    }
-
-    public String getBucketS3() {
-        return bucketS3;
-    }
-
-    public String getKeyS3() {
-        return keyS3;
-    }
-
-    public LocalDateTime getFechaCreacion() {
-        return fechaCreacion;
-    }
-
-    public LocalDateTime getFechaSubidaS3() {
-        return fechaSubidaS3;
     }
 
     public void actualizarArchivoLocal(String nombreArchivo, String rutaLocal) {
