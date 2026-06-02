@@ -6,6 +6,7 @@ import cl.duoc.cloudnative.inscripciones.model.Curso;
 import cl.duoc.cloudnative.inscripciones.model.Inscripcion;
 import cl.duoc.cloudnative.inscripciones.repository.CursoRepository;
 import cl.duoc.cloudnative.inscripciones.repository.InscripcionRepository;
+import cl.duoc.cloudnative.inscripciones.repository.ResumenInscripcionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,14 +18,17 @@ public class InscripcionService {
 
     private final CursoRepository cursoRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final ResumenInscripcionRepository resumenInscripcionRepository;
     private final ResumenInscripcionService resumenInscripcionService;
 
     public InscripcionService(
             CursoRepository cursoRepository,
             InscripcionRepository inscripcionRepository,
+            ResumenInscripcionRepository resumenInscripcionRepository,
             ResumenInscripcionService resumenInscripcionService) {
         this.cursoRepository = cursoRepository;
         this.inscripcionRepository = inscripcionRepository;
+        this.resumenInscripcionRepository = resumenInscripcionRepository;
         this.resumenInscripcionService = resumenInscripcionService;
     }
 
@@ -62,8 +66,15 @@ public class InscripcionService {
     public List<InscripcionResponse> listarInscripciones() {
         return inscripcionRepository.findAll()
                 .stream()
-                .map(InscripcionResponse::from)
+                .map(this::crearRespuestaConResumen)
                 .toList();
+    }
+
+    private InscripcionResponse crearRespuestaConResumen(Inscripcion inscripcion) {
+        String resumenLocalPath = resumenInscripcionRepository.findByInscripcionId(inscripcion.getId())
+                .map(resumen -> resumen.getRutaLocal())
+                .orElse(null);
+        return InscripcionResponse.from(inscripcion, resumenLocalPath);
     }
 
     private void validarInscripcion(InscripcionRequest request) {
