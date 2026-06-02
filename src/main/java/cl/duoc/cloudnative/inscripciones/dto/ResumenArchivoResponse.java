@@ -4,6 +4,7 @@ public record ResumenArchivoResponse(
         Long inscripcionId,
         String bucket,
         String key,
-        String fileName
+        String fileName,
+        String localPath
 ) {
 }

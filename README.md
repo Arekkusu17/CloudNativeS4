@@ -64,6 +64,21 @@ Tabla intermedia que resuelve la relacion muchos a muchos entre inscripciones y 
 | `inscripcion_id` | `BIGINT` | Referencia a `inscripciones.id`. |
 | `curso_id` | `BIGINT` | Referencia a `cursos.id`. |
 
+### Tabla `resumenes_inscripcion`
+
+Tabla que registra la metadata del archivo fisico y del objeto S3 asociado al resumen de una inscripcion. Cada inscripcion puede tener un resumen vigente.
+
+| Columna | Tipo | Descripcion |
+| --- | --- | --- |
+| `id` | `BIGINT` | Identificador primario autoincremental. |
+| `inscripcion_id` | `BIGINT` | Referencia unica a `inscripciones.id`. |
+| `nombre_archivo` | `VARCHAR(160)` | Nombre del archivo de resumen. |
+| `ruta_local` | `VARCHAR(500)` | Ruta del archivo fisico generado en el servidor. |
+| `bucket_s3` | `VARCHAR(120)` | Bucket donde se sube el resumen. |
+| `key_s3` | `VARCHAR(500)` | Key del objeto dentro de S3. |
+| `fecha_creacion` | `TIMESTAMP` | Fecha de creacion del registro de resumen. |
+| `fecha_subida_s3` | `TIMESTAMP` | Fecha de la ultima subida o reemplazo en S3. |
+
 ## Endpoints
 
 ### Listar cursos

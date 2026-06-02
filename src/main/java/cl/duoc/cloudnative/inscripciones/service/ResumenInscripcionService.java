@@ -3,9 +3,12 @@ package cl.duoc.cloudnative.inscripciones.service;
 import cl.duoc.cloudnative.inscripciones.dto.ResumenArchivoResponse;
 import cl.duoc.cloudnative.inscripciones.model.Curso;
 import cl.duoc.cloudnative.inscripciones.model.Inscripcion;
+import cl.duoc.cloudnative.inscripciones.model.ResumenInscripcion;
 import cl.duoc.cloudnative.inscripciones.repository.InscripcionRepository;
+import cl.duoc.cloudnative.inscripciones.repository.ResumenInscripcionRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -30,16 +33,19 @@ public class ResumenInscripcionService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final InscripcionRepository inscripcionRepository;
+    private final ResumenInscripcionRepository resumenInscripcionRepository;
     private final S3Client s3Client;
     private final String resumenesBucket;
     private final Path resumenesLocalDir;
 
     public ResumenInscripcionService(
             InscripcionRepository inscripcionRepository,
+            ResumenInscripcionRepository resumenInscripcionRepository,
             S3Client s3Client,
             @Value("${app.aws.s3.resumenes-bucket}") String resumenesBucket,
             @Value("${app.resumenes.local-dir}") String resumenesLocalDir) {
         this.inscripcionRepository = inscripcionRepository;
+        this.resumenInscripcionRepository = resumenInscripcionRepository;
         this.s3Client = s3Client;
         this.resumenesBucket = resumenesBucket;
         this.resumenesLocalDir = Paths.get(resumenesLocalDir);
@@ -50,12 +56,17 @@ public class ResumenInscripcionService {
         return construirResumen(inscripcion).getBytes(StandardCharsets.UTF_8);
     }
 
+    @Transactional
     public String guardarResumenLocal(Inscripcion inscripcion) {
         Path ruta = rutaResumenLocal(inscripcion.getId());
         try {
             Files.createDirectories(ruta.getParent());
             Files.writeString(ruta, construirResumen(inscripcion), StandardCharsets.UTF_8);
-            return ruta.normalize().toString();
+            String rutaNormalizada = ruta.normalize().toString();
+            ResumenInscripcion resumen = obtenerOCrearResumen(inscripcion);
+            resumen.actualizarArchivoLocal(nombreArchivo(inscripcion.getId()), rutaNormalizada);
+            resumenInscripcionRepository.save(resumen);
+            return rutaNormalizada;
         } catch (IOException exception) {
             throw new IllegalStateException("No fue posible crear el archivo fisico del resumen.");
         }
@@ -79,36 +90,55 @@ public class ResumenInscripcionService {
         return "resumen-inscripcion.txt";
     }
 
+    @Transactional
     public ResumenArchivoResponse subirResumenGenerado(Long inscripcionId) {
-        byte[] contenido = generarResumen(inscripcionId);
+        Inscripcion inscripcion = obtenerInscripcion(inscripcionId);
+        byte[] contenido = construirResumen(inscripcion).getBytes(StandardCharsets.UTF_8);
         String key = keyResumen(inscripcionId);
+        String bucket = obtenerBucket();
 
         PutObjectRequest request = PutObjectRequest.builder()
-                .bucket(obtenerBucket())
+                .bucket(bucket)
                 .key(key)
                 .contentType(CONTENT_TYPE)
                 .contentLength((long) contenido.length)
                 .build();
 
         s3Client.putObject(request, RequestBody.fromBytes(contenido));
-        return respuesta(inscripcionId, key);
+        String rutaLocal = guardarResumenLocal(inscripcion);
+        ResumenInscripcion resumen = obtenerOCrearResumen(inscripcion);
+        resumen.actualizarArchivoLocal(nombreArchivo(inscripcionId), rutaLocal);
+        resumen.actualizarS3(bucket, key);
+        resumenInscripcionRepository.save(resumen);
+        return respuesta(inscripcionId, bucket, key, rutaLocal);
     }
 
+    @Transactional
     public ResumenArchivoResponse reemplazarResumen(Long inscripcionId, MultipartFile file) {
-        obtenerInscripcion(inscripcionId);
+        Inscripcion inscripcion = obtenerInscripcion(inscripcionId);
         validarArchivo(file);
         String key = keyResumen(inscripcionId);
+        String bucket = obtenerBucket();
 
         try {
+            byte[] contenido = file.getBytes();
             PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(obtenerBucket())
+                    .bucket(bucket)
                     .key(key)
                     .contentType(file.getContentType() != null ? file.getContentType() : CONTENT_TYPE)
-                    .contentLength(file.getSize())
+                    .contentLength((long) contenido.length)
                     .build();
 
-            s3Client.putObject(request, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-            return respuesta(inscripcionId, key);
+            s3Client.putObject(request, RequestBody.fromBytes(contenido));
+            Path ruta = rutaResumenLocal(inscripcionId);
+            Files.createDirectories(ruta.getParent());
+            Files.write(ruta, contenido);
+
+            ResumenInscripcion resumen = obtenerOCrearResumen(inscripcion);
+            resumen.actualizarArchivoLocal(nombreArchivo(inscripcionId), ruta.normalize().toString());
+            resumen.actualizarS3(bucket, key);
+            resumenInscripcionRepository.save(resumen);
+            return respuesta(inscripcionId, bucket, key, resumen.getRutaLocal());
         } catch (IOException exception) {
             throw new IllegalArgumentException("No fue posible leer el archivo enviado.");
         }
@@ -125,14 +155,19 @@ public class ResumenInscripcionService {
         return response.asByteArray();
     }
 
+    @Transactional
     public void borrarResumen(Long inscripcionId) {
-        obtenerInscripcion(inscripcionId);
+        Inscripcion inscripcion = obtenerInscripcion(inscripcionId);
+        String bucket = obtenerBucket();
         DeleteObjectRequest request = DeleteObjectRequest.builder()
-                .bucket(obtenerBucket())
+                .bucket(bucket)
                 .key(keyResumen(inscripcionId))
                 .build();
 
         s3Client.deleteObject(request);
+        ResumenInscripcion resumen = obtenerOCrearResumen(inscripcion);
+        resumen.limpiarS3();
+        resumenInscripcionRepository.save(resumen);
     }
 
     private Inscripcion obtenerInscripcion(Long inscripcionId) {
@@ -186,8 +221,13 @@ public class ResumenInscripcionService {
                 .resolve(nombreArchivo(inscripcionId));
     }
 
-    private ResumenArchivoResponse respuesta(Long inscripcionId, String key) {
-        return new ResumenArchivoResponse(inscripcionId, obtenerBucket(), key, nombreArchivo(inscripcionId));
+    private ResumenInscripcion obtenerOCrearResumen(Inscripcion inscripcion) {
+        return resumenInscripcionRepository.findByInscripcionId(inscripcion.getId())
+                .orElseGet(() -> new ResumenInscripcion(inscripcion, nombreArchivo(inscripcion.getId())));
+    }
+
+    private ResumenArchivoResponse respuesta(Long inscripcionId, String bucket, String key, String rutaLocal) {
+        return new ResumenArchivoResponse(inscripcionId, bucket, key, nombreArchivo(inscripcionId), rutaLocal);
     }
 
     private String obtenerBucket() {
