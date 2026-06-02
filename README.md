@@ -79,6 +79,16 @@ Tabla que registra la metadata del archivo fisico y del objeto S3 asociado al re
 | `fecha_creacion` | `TIMESTAMP` | Fecha de creacion del registro de resumen. |
 | `fecha_subida_s3` | `TIMESTAMP` | Fecha de la ultima subida o reemplazo en S3. |
 
+### Modelo de Datos
+
+El estado actual del modelo de datos es:
+
+Fecha de actualizacion del diagrama: `2026-06-01`
+
+![Modelo de datos](docs/images/schema-db.png)
+
+El diagrama representa las tablas declaradas en `src/main/resources/schema.sql`, incluyendo la relacion entre cursos, inscripciones, la tabla intermedia `inscripcion_cursos` y la metadata de resumenes en `resumenes_inscripcion`.
+
 ## Endpoints
 
 ### Listar cursos
@@ -227,3 +237,24 @@ Publicar en Docker Hub:
 docker login
 docker push tu-usuario-dockerhub/curso-inscripciones-service:latest
 ```
+
+## Changelog
+
+### 2026-05-25
+
+- Se implemento la base del microservicio de cursos e inscripciones.
+- Se agregaron endpoints para listar y crear cursos.
+- Se agregaron endpoints para crear y listar inscripciones.
+- Se integro la base de datos H2 para persistir cursos, inscripciones y la relacion entre ambos.
+- Se preparo la ejecucion de la aplicacion mediante Docker.
+- Se incorporo el workflow inicial de GitHub Actions para construir la imagen, publicarla en Docker Hub y desplegar en AWS EC2.
+
+### 2026-06-01
+
+- Se agrego la funcionalidad de generacion de resumen fisico al crear una inscripcion.
+- Se incorporaron endpoints para subir, reemplazar, descargar y eliminar resumenes en AWS S3.
+- Se definio la jerarquia S3 `inscripciones/id={id_inscripcion}/resumen-inscripcion.txt`.
+- Se agrego la tabla `resumenes_inscripcion` para persistir metadata del archivo local y del objeto S3 asociado a cada inscripcion.
+- Se actualizo el workflow de GitHub Actions para desplegar el contenedor con variables AWS y volumenes persistentes.
+- Se incorporo Lombok en los modelos para reducir codigo repetitivo y mantener las entidades mas legibles.
+- Se agrego el diagrama del modelo de datos como evidencia visual en `docs/images/schema-db.png`.
