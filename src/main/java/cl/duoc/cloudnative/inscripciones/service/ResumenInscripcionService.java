@@ -211,7 +211,7 @@ public class ResumenInscripcionService {
     }
 
     private String keyResumen(Long inscripcionId) {
-        return "inscripciones/id=" + inscripcionId + "/" + nombreArchivo(inscripcionId);
+        return "resumenes/" + inscripcionId + "/" + nombreArchivo(inscripcionId);
     }
 
     private Path rutaResumenLocal(Long inscripcionId) {

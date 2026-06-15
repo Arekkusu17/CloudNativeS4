@@ -151,7 +151,7 @@ Genera el resumen y lo sube al bucket configurado. El archivo se guarda dentro d
 Ruta S3 resultante:
 
 ```text
-nombre-del-bucket/inscripciones/id=1/resumen-inscripcion.txt
+nombre-del-bucket/resumenes/1/resumen-inscripcion.txt
 ```
 
 ```http
@@ -179,6 +179,20 @@ GET /api/inscripciones/1/resumen/s3
 
 ```http
 DELETE /api/inscripciones/1/resumen/s3
+```
+
+### Validacion automatizada de endpoints
+
+Con la aplicacion ejecutandose en `http://localhost:8080`, validar cursos, inscripciones y resumen fisico local:
+
+```bash
+./scripts/validate-endpoints.sh
+```
+
+Para incluir la validacion real contra AWS S3, configurar bucket y credenciales AWS antes de ejecutar:
+
+```bash
+RUN_S3=true ./scripts/validate-endpoints.sh
 ```
 
 ## Despliegue con GitHub Actions
@@ -253,7 +267,7 @@ docker push tu-usuario-dockerhub/curso-inscripciones-service:latest
 
 - Se agrego la funcionalidad de generacion de resumen fisico al crear una inscripcion.
 - Se incorporaron endpoints para subir, reemplazar, descargar y eliminar resumenes en AWS S3.
-- Se definio la jerarquia S3 `inscripciones/id={id_inscripcion}/resumen-inscripcion.txt`.
+- Se definio la jerarquia S3 `resumenes/{numero_resumen}/resumen-inscripcion.txt`.
 - Se agrego la tabla `resumenes_inscripcion` para persistir metadata del archivo local y del objeto S3 asociado a cada inscripcion.
 - Se actualizo el workflow de GitHub Actions para desplegar el contenedor con variables AWS y volumenes persistentes.
 - Se incorporo Lombok en los modelos para reducir codigo repetitivo y mantener las entidades mas legibles.
